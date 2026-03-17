@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motohero - Pro Racing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #1a1a1a; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: white; overflow: hidden; }
+        #game-container { position: relative; border: 4px solid #f39c12; border-radius: 10px; box-shadow: 0 0 50px rgba(243, 156, 18, 0.3); }
+        canvas { display: block; background: #333; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); z-index: 10; }
+        .btn { background: #f39c12; color: #1a1a1a; padding: 15px 40px; border: none; border-radius: 30px; font-size: 24px; font-weight: bold; cursor: pointer; transition: transform 0.2s, background 0.2s; margin-top: 20px; text-transform: uppercase; }
+        .btn:hover { background: #e67e22; transform: scale(1.1); }
+        h1 { font-size: 64px; text-transform: uppercase; letter-spacing: 5px; color: #f39c12; text-shadow: 3px 3px 0 #000; margin-bottom: 10px; text-align: center; }
+        #hud { position: absolute; top: 20px; left: 20px; font-size: 20px; font-weight: bold; pointer-events: none; }
+        .score-item { margin-bottom: 5px; text-shadow: 1px 1px 2px #000; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay">
+            <h1 id="title-text">MOTOHERO</h1>
+            <p id="info-text">Use Arrow Keys to Race!</p>
+            <button class="btn" onclick="startGame()">START RACE</button>
+        </div>
+        <div id="hud" style="display: none;">
+            <div class="score-item">SCORE: <span id="score">0</span></div>
+            <div class="score-item">SPEED: <span id="speed">0</span> km/h</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('ui-overlay');
+        const hud = document.getElementById('hud');
+        const scoreEl = document.getElementById('score');
+        const speedEl = document.getElementById('speed');
+        const titleText = document.getElementById('title-text');
+        const infoText = document.getElementById('info-text');
+
+        canvas.width = 400;
+        canvas.height = 600;
+
+        let gameActive = false;
+        let score = 0;
+        let speed = 5;
+        let player = { x: 175, y: 500, w: 50, h: 80 };
+        let enemies = [];
+        let keys = {};
+
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        function startGame() {
+            gameActive = true;
+            score = 0;
+            speed = 5;
+            enemies = [];
+            player.x = 175;
+            overlay.style.display = 'none';
+            hud.style.display = 'block';
+            update();
+        }
+
+        function spawnEnemy() {
+            if (Math.random() < 0.02 + (speed / 1000)) {
+                enemies.push({
+                    x: Math.random() * (canvas.width - 50),
+                    y: -100,
+                    w: 50,
+                    h: 80,
+                    color: \`hsl(\${Math.random() * 360}, 70%, 50%)\`
+                });
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            // Detail
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(player.x + 10, player.y + 10, 30, 20);
+            ctx.fillRect(player.x + 5, player.y + 60, 40, 10);
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Road markings
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([20, 30]);
+            ctx.lineDashOffset -= speed;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+
+            // Player movement
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= 7;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += 7;
+
+            spawnEnemy();
+            drawPlayer();
+
+            enemies.forEach((enemy, index) => {
+                enemy.y += speed;
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+
+                // Collision
+                if (player.x < enemy.x + enemy.w && player.x + player.w > enemy.x &&
+                    player.y < enemy.y + enemy.h && player.y + player.h > enemy.y) {
+                    gameOver();
+                }
+
+                if (enemy.y > canvas.height) {
+                    enemies.splice(index, 1);
+                    score += 10;
+                    speed += 0.1;
+                }
+            });
+
+            scoreEl.innerText = score;
+            speedEl.innerText = Math.floor(speed * 20);
+
+            requestAnimationFrame(update);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            overlay.style.display = 'flex';
+            titleText.innerText = 'CRASHED!';
+            infoText.innerText = \`Final Score: \${score}\`;
+            overlay.querySelector('button').innerText = 'TRY AGAIN';
+        }
+    </script>
+</body>
+</html>
